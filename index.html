@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, user-scalable=yes" />
+    <script src="//cdnjs.cloudflare.com/ajax/libs/marked/0.3.2/marked.min.js"></script>
+    <link rel="stylesheet" href="//unpkg.com/simplebar@latest/dist/simplebar.css" />
+    <script src="//unpkg.com/simplebar@latest/dist/simplebar.min.js"></script>
+    <script src="//cdn.jsdelivr.net/gh/cferdinandi/gumshoe@4/dist/gumshoe.polyfills.min.js"></script>
+    <style>
+         :root {
+            --col-dark: #1f4e5f;
+            --col-light: #aacfd0;
+            --col-active: #79a8a9;
+            --col-white: #f4f7f7;
+            --height-head: 60px;
+            --col-scrollbar: #ec318d;
+        }
+        
+        html {
+            overflow-y: auto;
+            scroll-behavior: smooth;
+        }
+        
+        body {
+            margin: 0px 0px 0px 0px;
+            padding-top: var(--height-head);
+            background-color: var(--col-white);
+        }
+        
+        #github {
+            position: fixed;
+            top: 0;
+            left: calc(-1 * var(--height-head));
+            width: var(--height-head);
+            margin-left: 100%;
+        }
+        
+        #head {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: var(--height-head);
+            background-color: var(--col-dark);
+            color: var(--col-light);
+            overflow: hidden;
+        }
+        
+        #head h1 {
+            font-size: calc(var(--height-head)*0.75);
+            line-height: var(--height-head);
+            margin: 0px;
+        }
+        
+        #toc {
+            background-color: var(--col-dark);
+            color: var(--col-light);
+        }
+        
+        #toc li,
+        #toc a {
+            color: var(--col-light);
+        }
+        
+        #toc li.active,
+        #toc li.active a {
+            color: var(--col-dark);
+            background-color: var(--col-white);
+        }
+        
+        #toc li {
+            white-space: nowrap;
+        }
+        
+        #body section {
+            padding-top: calc(var(--height-head) + 10px);
+        }
+        
+        h2+section {
+            margin-top: calc(var(--height-head) * -1);
+        }
+        
+        #body h4 {
+            margin-top: 0px;
+        }
+        
+        #container {
+            height: calc(100vh - var(--height-head));
+        }
+        
+        @media (orientation: portrait) {
+            #toc {
+                _margin-left: 20px;
+            }
+        }
+        
+        @media (orientation: landscape) {
+            #toc {
+                position: fixed;
+                top: 0;
+                left: 0;
+                margin-top: var(--height-head);
+                height: 100vh;
+                width: 30vw;
+                min-width: 300px;
+            }
+            #body {
+                margin-left: calc(20px + max(30vw, 300px));
+            }
+        }
+        
+        .simplebar-scrollbar::before {
+            background-color: var(--col-scrollbar);
+        }
+    </style>
+    <title>最終論文集</title>
+</head>
+
+<body>
+    <div id="container">
+        <div id="toc">
+        </div>
+        <div id="body">
+        </div>
+    </div>
+    <div id="head">
+    </div>
+    <div id="github">
+        <a id="repogitory" href="#"><img src="github.png" width="50" style="padding:5px;opacity:.8;"></a>
+    </div>
+
+    <script defer>
+        fetch('README.md').then((response) => response.text()).then((text) => {
+            let markdown = {
+                head: [],
+                toc: [],
+                body: []
+            };
+            const mode = ["head", "body", "body", "toc", "body", "body"];
+            let idx = 0;
+            const md = marked.lexer(text);
+            let inHead2 = false;
+            md.forEach((line) => {
+                if (line.type == "heading" && line.depth == 2) {
+                    idx++;
+                }
+                if (line.type == "heading" && line.depth == 1) {
+                    document.title = line.text;
+                } else if (mode[idx] == "head" && line.type == "paragraph" && line.tokens[0]["type"] == "link") {
+                    document.getElementById("repogitory").href = line.tokens[0]["href"];
+                } else if (/^\*\[[A-Z][0-9]+\]\*/.exec(line.text)) {
+                    line.text = line.text.replace(/^\*\[([A-Z][0-9]+)\]\*/, '<span class="session">$1</span>');
+                }
+                markdown[mode[idx]].push(line);
+            });
+            if (inHead2) {
+                markdown[mode[idx]].push({
+                    type: "text",
+                    text: "</div>"
+                });
+            }
+            markdown["head"]["links"] = md["links"];
+            markdown["toc"]["links"] = md["links"];
+            markdown["body"]["links"] = md["links"];
+            console.log(markdown);
+            document.getElementById("head").innerHTML = marked.parser(markdown["head"]);
+            document.getElementById("toc").innerHTML = marked.parser(markdown["toc"]);
+            document.getElementById("body").innerHTML = marked.parser(markdown["body"]);
+            new SimpleBar(document.getElementById('toc'), {
+                forceVisible: true
+            });
+            var header = document.querySelector('#head');
+            var spy = new Gumshoe('#toc a', {
+                offset: function() {
+                    return header.getBoundingClientRect().height;
+                }
+            });
+        }).catch((error) => console.log(error));
+    </script>
+</body>
+
+</html>
